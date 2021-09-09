@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <script src="https://kit.fontawesome.com/90f314fb8d.js" crossorigin="anonymous"></script>
+    <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script> 
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/css/bootstrap.min.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.0/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-KyZXEAg3QhqLMpG8r+8fhAXLRk2vvoC2f3B09zVXn8CA5QIVfZOJ3BCsw2P0p/We" crossorigin="anonymous"></link>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.0/dist/js/bootstrap.bundle.min.js" integrity="sha384-U1DAWAznBHeqEIlVSCgzq+c9gqGAJn5c/t99JyeKa9xxaYpSvHU5awsuZVVFIhvj" crossorigin="anonymous"></script>
+    <title>Express-Mysql Example</title>
+  </head>
+  <body>
+    
+    <br>
+    <div class="form-group row">
+      <div class="col-12">
+        <h1 class="col-sm-4">파일 확장자 차단</h1>
+      </div>
+    </div>
+    <br>
+
+    <div class="form-group row">
+      <div class="col-12">
+        <label class="col-sm-2 col-form-label col-form-label-lg"> 고정 확장자 </label>
+        <div class="col-sm-10">
+          <% let file_count = 0 %>
+          <% FileList.forEach(function(file){ %>
+            <% if (file.is_additional == 0) {%>
+              <div class="form-check form-check-inline">
+                <% let checked = file.is_checked ? "checked" : "" %>
+                <input class="file-check-boxes" type="checkbox" value="<%= file.id %>" <%= checked %> /> <%= file.file_extension %>
+              </div>
+            <% } else file_count++ %>
+          <% }) %>
+        </div>
+      </div>
+    </div>
+
+    <div class="form-group row">
+      <div class="col-12">
+        <label for="colFormLabelLg" class="col-sm-2 col-form-label col-form-label-lg">
+          커스텀 확장자
+        </label>
+        <div class="col-sm-10">
+          <label id="key" for="input-file_extension"></label>
+          <input id="input-file_extension" placeholder="확장자 입력"></input>
+          <button id="add-file-btn" class="btn btn-secondary btn-sm">
+            <i class="fas fa-plus"></i> 추가
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <input id="file-count" type="hidden" value="<%= file_count %>"/>
+    <div class="form-group row">
+      <div class="col-12">
+        <span class="col-sm-4">
+          <%= file_count %> / 200
+        </span>
+      </div>
+    </div>
+
+    <div class="form-group row">
+      <div class="col-12">
+        <div class="col-sm-4">
+          <% FileList.forEach(function(file){ %>
+            <% if (file.is_additional == 1) {%>
+              <span class="badge border border-dark" style="color: black; background-color: white;">
+                <%= file.file_extension %>&nbsp
+                <a href="#" class="file-delete-btns" data-value="<%= file.id %>"><i class="fas fa-times" style="color: gray;"></i></a>
+              </span>
+            <% } %>
+          <% }) %>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
+
+<script>
+  // byId
+  this.file_extension = document.getElementById("input-file_extension");
+  this.file_count = document.getElementById("file-count");
+  this.addFileBtn = document.getElementById("add-file-btn");
+  
+  // byClass
+  this.checkBoxes = document.getElementsByClassName("file-check-boxes");
+  this.fileDeleteBtns = document.getElementsByClassName("file-delete-btns");
+
+  this.addFileBtn.addEventListener("click", (e)=> {
+    e.preventDefault();
+    addFileExtension();
+  })
+
+  for (const checkBox of this.checkBoxes) {
+    checkBox.addEventListener('click', () => isChecked(checkBox));
+  }
+  for (const fileDeleteBtn of this.fileDeleteBtns) {
+    fileDeleteBtn.addEventListener('click', function() {
+        var file_id = $(this).data('value');
+        deleteFileExtension(file_id);
+    });
+  }
+
+  // 커스텀 확장자 추가
+  function addFileExtension() {
+
+    // input validate
+    if(this.file_extension.value.includes(" ") || this.file_extension.value == "") {
+        alert("확장자를 입력해주세요 !")
+        return;
+    }
+
+    // 확장자 길이 제한 체크
+    if(this.file_extension.value.length > 20) {
+      alert("확장자 길이 제한을 초과했습니다 ! (20자)")
+      return;
+    }
+
+    // 확장자 개수 체크
+    if(this.file_count.value >= 200) {
+      alert("커스텀 확장자의 개수를 초과했습니다 !")
+      return;
+    }
+
+    var file_data = {
+      file_extension: this.file_extension.value
+    }
+
+    fetch("http://localhost:4000/files", {
+      method: "POST", //통신방법
+      headers: {
+        "content-type": "application/json",
+      },
+      body: JSON.stringify(file_data),
+    }).then((res) => {
+        return res.json(); //Promise 반환
+    })
+    .then((json) => {
+        alert(json.message); // 서버에서 주는 json데이터가 출력 됨
+    })
+    .then(window.location.reload());
+    
+  }
+
+  // 고정 확장자 체크
+  function isChecked(checkBox) {
+    var file_data = {
+      id: checkBox.value,
+      is_checked: checkBox.checked
+    }
+    $.ajax({
+        data: file_data,
+        type: "PUT",
+        url: '/files',
+        success: function (res) {
+          console.log(res)
+        },
+        error: function() {
+          console.error();
+        }
+    });
+  }
+
+  // 커스텀 확장자 삭제
+  function deleteFileExtension(file_id) {
+    var file_data = {
+      id: file_id
+    }
+    console.log(file_id)
+
+    fetch("http://localhost:4000/files", {
+      method: "DELETE", //통신방법
+      headers: {
+        "content-type": "application/json",
+      },
+      body: JSON.stringify(file_data),
+    }).then(window.location.reload())
+  }
+  
+
+</script>
